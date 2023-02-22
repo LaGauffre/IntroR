@@ -1,8 +1,8 @@
 ## Introduction au logiciel **R**
 
-Ce répertoire regroupe les supports de cours et capsule vidéos du cours d'introduction à R dispensé aux L3 Actuariat à l'Institut de Science Financières et d'Assurances (Université Claude Bernard Lyon 1).
+Ce répertoire regroupe les supports de cours et capsules vidéos du cours d'introduction à R dispensé aux L3 Actuariat à l'Institut de Science Financières et d'Assurances (Université Claude Bernard Lyon 1).
 
-Ce cours propose une introduction aux langages R, comprenant du traitement de données (baseR, dplyr), de la visualisation de données (ggplot2) et la définition de fonction.
+Ce cours propose une introduction au langage R, comprenant du traitement de données (baseR, dplyr), de la visualisation de données (ggplot2) et la définition de fonction.
 
 ### Support de cours
 
