@@ -1,0 +1,383 @@
+---
+title: "IntroR - Chapitre II - Visualisation Graphique"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Nous allons voir comment utiliser la librairie **ggplot2** pour visualiser les données.
+
+```{r}
+library(ggplot2)
+```
+
+Il s'agit d'une composante de la librairie **tidyverse**.
+
+Un graphique ggplot comprends les éléments de bases suivant 
+
+1. **ggplot(data = )** : Les données à visualiser
+2. **geom_**: La forme géométrique pour visualiser les données, cela inclut la couleur des courbes, le remplissage des barre, la taille/forme/couleur des points. 
+3. **aes()**: Le lien entre les axes du graphique (X et Y) et les vatriables du jeu de données (à placer dans **ggplot** ou **geom_**)
+4. **labs()**: Précise le nom des axes, du titre, de la légende 
+5. **theme()**: Apparence globale comprenant le fond, le quadrillage. Pour le texte: la police, sa taille et sa couleur.
+
+D'autres éléments peuvent se rajouter comme
+
+1. **xlim(), ylim()**: limiter la longeur des axes
+2. **coord_**: Changer la projection des données sur les axes (**coord_polar()** ou **coord_flip()**), changer l'aspect ratio **coord_fixed()**
+3. **scale_x_continuous** **scale_y_continuouss**: Changer l'échelle de graduation d'une variable quantitative
+4. **theme_bw()** pour changer l'aspect global du graphique (par défaut **theme_gray()**)
+
+
+# Analyse univariée
+Reprenons le jeu de données **Insurance** dans la librairie **MASS**.
+
+```{r}
+library(insuranceData)
+data(AutoClaims)
+# Résumé statistiques des données
+summary(AutoClaims)
+```
+
+## Variable quantitative
+
+La variable **Claims** est une variables quantitative. L'analyse de la distribution d'une variable quantitative passe par la production d'un histogramme
+
+```{r}
+# Repère cartésien et chargement des données
+ggplot(data = AutoClaims, aes(x = PAID)) +
+  # Histogramme
+  geom_histogram()
+```
+
+et d'une boîte à moustache.
+
+```{r}
+ggplot(data = AutoClaims, aes(y = PAID)) + 
+  # Boîte à moustache
+  geom_boxplot() 
+```
+
+Vous pouvez tester l'alternative à la boxplot avec **geom_violin**, réduire l'échelle de l'axe y avec **ylim** pour lire plus facilement les quartiles et le mettre à l'horizontal via **coord_flip()**.
+
+Nous allons maintenant customiser nos graphiques. Nous souhaitons
+
+- les mettre l'un à coté de l'autre (paquet **gridExtra**),
+- Ajouter des noms pour les axes **labs(x = "", y = "", title = "")**,
+- Changer la taille de la police (**theme(axis.text.x= element_text(family, face, colour, size)**), où 
+
+    - **family** pour la famille de police 
+    - **face** pour type de police, e.g. *italic*
+    - **colour** pour la couleur
+    - **size** pour la taille en pts
+    - mettre un peu de couleur (**fill = 'couleur'**)
+    
+- Ajouter la moyenne empirique sur la boîte à moustache et l'histogramme. 
+- Changer le découpage des blocs pour l'histogramme. 
+- Changer la graduation de l'axe des abscisse dans l'histogramme via **scale_x_continuous**
+  
+```{r}
+# Librairie pour placer les graphiques l'un à côté de l'autre
+library(gridExtra)
+# Histogramme dans l'objet h
+h <- ggplot(data = AutoClaims, aes(x = PAID)) + 
+  # Histogramme bleu avec moins de barres
+  geom_histogram(fill = 'blue', 
+                 breaks =seq(0, 60000, 200)) +
+  # Noms des axes et titres
+  labs(x = "Montant des sinistres", 
+       y = "Fréquence", 
+       # \n permet d'aller à la ligne
+       title = "Histogramme des \n montant de sinistres") +
+  # Taille de la police et ajustement horizontal du titre entre 0 (à gauche) 
+  # et 1 (à droite) 
+  theme(axis.text.x = element_text(size = 10), 
+        axis.text.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        plot.title = element_text(hjust = 1/2, size = 14)
+        ) + 
+  scale_x_continuous(breaks = c(0, 30000, 60000))
+
+# Boxplot dans l'objet b
+b <- ggplot(data = AutoClaims, aes(y = PAID)) +
+  # Boxplot rouge
+  geom_boxplot( fill = 'red') +
+  # Label axe des y
+  labs(y = 'Montant des sinistres', title = 'Boîte à moustache des \n montants de sinistres') + 
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        plot.title = element_text(hjust = 1/2, size = 14))
+  
+# Les deux graphiques l'un à côté de l'autre
+
+grid.arrange(h, b, ncol=2)
+
+```
+
+## Variable qualitative
+
+Nous allons utiliser le jeu de données **ozone.csv** comprenant des mesures d'ozone quotidiennes à Rennes. 
+
+```{r}
+#Mac
+#ozone <- read.csv2("~/Dropbox/PO/Enseignements/ISFA/R/BDD/ozone.csv")
+#PC
+ozone <- read.csv2("C:/Users/pierr/Dropbox/Enseignements/ISFA/R/BDD/ozone.csv")
+```
+
+La variable **vent** est une variable qualitative dont les modalités sont les directions du vent. 
+
+```{r}
+# Effectifs pour chaque modalité
+table(ozone$vent)
+```
+
+Pour apprécier la répartition des directions de vents, on a recours à un diagramme en bar 
+
+```{r}
+ggplot(data = ozone,  aes(x = vent)) + 
+  # Diagramme en barre vert
+  geom_bar(fill = 'green')
+```
+
+On peut personaliser le diagramme en bar et
+
+- attribuer une couleur différente à chaque barre (**fill = variable** dans la fonction **aes()**). 
+- Afficher des proportions plutôts que les effectifs.
+
+```{r}
+library(scales)
+ggplot(data = ozone) +
+  # ..count.. est une variable calculée automatiquement lorsqu'on utilise geom_bar
+  geom_bar(aes(x = vent, y = (..count..) / sum(..count..), fill = vent)) + 
+  scale_y_continuous(labels = percent) +
+  labs( y = 'pourcentage')
+#   # Pour afficher les valeurs sous le format pourcentage
+  
+```
+
+On peut aussi produire un diagramme en secteur, pour ce faire, il faut transformer le diagramme en bar via un passage en coordonnées polaires (**+ coord_polar()**). 
+
+```{r}
+ggplot(data = ozone) +
+  #Diagramme en barre ne contenant qu'une seule barre
+  geom_bar(mapping = aes(x = 1, fill = vent), position = 'fill') +
+  # Passage en coordonnées polaires
+  coord_polar(theta ='y')
+```
+
+On peut améliorer le visuel en supprimant l'axe qui s'intitule **x** et en plaçant des marqueurs aux points de démarcation des différents secteurs.
+
+```{r}
+# Récupération des pourcentages cummulés
+cum_percent_vent <- cumsum(rev(table(ozone$vent))) / length(ozone$vent)
+names(cum_percent_vent) <- NULL
+
+ggplot(data = ozone) +
+  #Diagramme en barre ne contenant qu'une seule barre
+  geom_bar(mapping = aes(x = 1, fill = vent), position = 'fill') +
+  # Passage en coordonnées polaires
+  coord_polar(theta ='y') +
+  # On place les marqueurs de manière adéquate
+  scale_y_continuous(breaks = round(cum_percent_vent * 100) / 100) +
+  # On efface tout ce qui concerne l'axe des y qui correspond au module en coordonées polaires
+  theme(axis.text.y = element_blank(), 
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()
+        )
+```
+
+# Analyse bivariée
+
+## Relation entre deux variables quantitatives
+Lorsque l'on étudie deux variables quantitatives, on distingue généralement deux cas:
+
+1. L'étude de la relation entre une variable à prédire $Y$ (réponse) et d'un prédicteur ou covariable $X$. Il s'agit d'une régression où l'on cherche à identifier une fonction $f$ telle que 
+$$
+Y\approx f(X).
+$$ 
+On doit alors (en plus de calculer des coefficients de corrélation) tracer $Y$ en fonction de $X$.
+2. L'étude d'une quantité au cours du temps, lorsqu'on a des observations à des intervalles de temps réguliers. On trace alors la fonction $X(t)$ en fonction du temps $t$, on parle dans ce cas de série temporelles. On cherche à observer des tendances et des saisonalités. 
+
+Nous pouvons commencer par tracer une fonction classique
+$$
+f(x) = \sin(x)\text{, }x\in\mathbb{R}.
+$$
+On crée un jeu de données contenant les valeurs pour $x$ (donnant les limites de l'axes des abscisses) et les valeurs pour $f(x)$ correspondantes. La fonction **geom_point** permet de produire des nuages de points. 
+
+```{r}
+grid <- seq(-2 * pi, 2 * pi, 4 * pi / 100)
+values <- sin(grid)
+sin_data <- data.frame(x = grid , f_x = values)
+ggplot(data = sin_data,  mapping = aes(x = grid, y = f_x)) + 
+  # Traçage de la courbe
+  geom_line(linetype="solid", color="red", size=0.5) +
+  #Attribution d'un titre pour les axes
+  xlab('x') + ylab('sin(x)') +
+  # Dessine des lignes verticales et horizontales en guise d'axes
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+```
+
+Via le jeu de données **ozone**, nous pouvons étudier l'incidence de la température **T12** sur la hauteur du pic d'ozone mesuré **max03**.
+
+```{r}
+ggplot(data = ozone, mapping = aes(x = T12, y = maxO3)) +
+  # Nuage de point
+  geom_point(shape=23, fill="blue", color="darkred", size=3)
+```
+
+Il est assez clair que les fortes températures influence positivement les mesures d'ozone! On peut calculer le coefficient de corrélation linéaire de Pearson
+
+```{r}
+# Coeficient de corrélation linéaire
+cor(ozone$maxO3, ozone$T12)
+```
+
+Nous allons maintenant étudier les fluctuation du cac 40 au cours du temps
+
+```{r}
+data(EuStockMarkets)
+library(lubridate)
+EuStockMarkets_V1 <- data.frame(dates = date_decimal(as.numeric(time(EuStockMarkets))), EuStockMarkets)
+ggplot(data = EuStockMarkets_V1, mapping = aes( x = dates, y = CAC)) + geom_line()
+
+```
+Nous pouvons ajouter l'évolution d'autres indices boursiers.
+
+```{r}
+# Séries temporelles
+ggplot(data = EuStockMarkets_V1) + 
+  geom_line(mapping = aes( x = dates, y = CAC), colour = 'blue') +
+  geom_line(mapping = aes( x = dates, y = FTSE), colour = 'red') +
+  geom_line(mapping = aes( x = dates, y = DAX), colour = 'green') +
+  geom_line(mapping = aes( x = dates, y = SMI), colour = 'yellow') +
+  ylab('Valeur des indices boursiers européens')
+```
+
+L'ajout d'une légende pose problème pour l'instant nous verrons une solution plus tard. 
+
+## Relation entre deux variables qualitatives
+
+Nous allons travailler sur un jeu de données de la library **questionr**.
+
+```{r}
+library(questionr)
+data(hdv2003)
+summary(hdv2003)
+```
+
+Nous pouvons éduier le lien entre le viveau d'étude **nivetud** et la pratique sportive **sport**. Pour étudier le lien entre deux variables qualitatives, on commence souvent par un tableau de contingence qui est un tableaux à double entrée indiquant des effectifs
+
+```{r}
+tab_contingence <- table(hdv2003$nivetud, hdv2003$sport)
+tab_contingence
+```
+
+On s'intéresse notamment aux pourcentages ligne 
+
+```{r}
+lprop(tab_contingence)
+```
+
+et colonne
+
+```{r}
+cprop(tab_contingence)
+```
+
+Ces informations peuvent être visualisées à l'aide de diagramme en barres. La variable **nivetud** comprends cependant trop de modalités (avec des noms trop long).
+
+```{r}
+ggplot(data = hdv2003) +
+  geom_bar(aes(x = nivetud))
+```
+
+Nous réduisons le nombre de modalités à l'aide de la fonction **levels**
+
+```{r}
+data("hdv2003")
+hdv2003$nivetud <- as.factor(hdv2003$nivetud)
+levels(hdv2003$nivetud) <- c(rep('Primaire', 3), rep('Secondaire', 2), rep('Supérieur', 3)) 
+table(hdv2003$nivetud)
+```
+
+Nous pouvons soit produire avoir une barre pour chaque modalité de la première variable qualitative (ici **nivetud**) splittée en fonction du nombre d'occurence des modalités de la deuxième variable qualitative (**sport**). 
+
+```{r}
+ggplot(data = hdv2003) + geom_bar(mapping = aes(x = nivetud, fill = sport), position = "stack") +
+  labs(x = "Niveau d'étude", y = "Effectif")
+```
+
+ou avoir une barre par modalité de la deuxième variable qualitative.
+
+```{r}
+ggplot(data = hdv2003) + geom_bar(mapping = aes(x = nivetud, fill = sport), position = "dodge") +
+  labs(x = "Niveau d'étude", y = "Effectif")
+```
+
+## Variables quantitatives et qualitatives
+Lorsque qu'on étudie le lien entre une variable qualitative et une variable quantitatives, on se sert de la variable qualitative pour segmenter le jeu de données. On se demande si la distribution de la variable quantitative est la même au sein des différents groupes définis par les modalités de la variable qualitative. On peut s'interesser par exemple à la sinistralité en fonction de la présence ou non d'un avocat.
+
+```{r}
+library(insuranceData)
+data(AutoBi)
+# La variable ATTORNEY n'est pas traité automatiquement comme une variable qualitative et donc nécessite un pré-traitement
+AutoBi$ATTORNEY <- as.factor(AutoBi$ATTORNEY)
+levels(AutoBi$ATTORNEY) <- c('yes', 'no')
+ggplot(data = AutoBi, aes(x = ATTORNEY, y = LOSS)) + geom_boxplot()
+```
+
+On peut aussi étudier l'intéraction entre deux variables quantitatives au sein des groupes définis par une variable qualitative. Par exemple, l'influence de la direction du vent dans la relation entre la température et le niveau d'ozone mesuré. 
+
+```{r}
+ggplot(data = ozone) + geom_point(mapping = aes(x = T12, y = maxO3, color = vent))
+```
+
+Ce n'est pas hyper facile à lire, on peut utiliser la fonction **geom_smooth** afin d'exhiber des tendances. 
+
+```{r}
+ggplot(data = ozone,  aes(x = T12, y = maxO3, color = vent)) + geom_smooth()
+```
+
+A noter qu'une technique de regression polynomial est utilisée ici (**method = loess**). On constate le peu d'influence de la direction du vent. On revient sur l'exemple des séries temporelles. On va ajouter une légende en créant un nouveau jeu de données contenant une variable qualitative indiquant l'indice boursier considéré. Imaginons que l'on souhaite comparer l'évolution du CAC et du DAX. 
+
+```{r}
+# Data frame contenant les données correspondant au CAC
+CAC <- data.frame(dates = EuStockMarkets_V1$dates, valeur = EuStockMarkets_V1$CAC, indice = 'CAC')
+# Data frame contenant les données correspondant au DAX
+DAX <- data.frame(dates = EuStockMarkets_V1$dates, valeur = EuStockMarkets_V1$DAX, indice = 'DAX')
+# On concatène ces deux data frames
+CAC_DAX = rbind(CAC, DAX)
+
+# plus qu'à faire le graphique
+ggplot(data =  CAC_DAX) + geom_line( mapping = aes(x = dates, y = valeur, colour = indice))
+```
+
+Il est possible d'enregistrer le dernier graphique produit à l'aide de la fonction **ggsave**. Pour l'occasion, nous allons changer le thème pour changer d'ambiance
+
+```{r}
+library(ggthemes)
+(p <- ggplot(data =  CAC_DAX) + geom_line( mapping = aes(x = dates, y = valeur, colour = indice)) + theme_economist())
+ggsave("indices_boursiers.pdf", plot = p, width = 11, height = 8)
+```
+
+# Référence 
+  - [Graphiques univariés et bivariés avec ggplot2](http://larmarange.github.io/analyse-R/graphiques-bivaries-ggplot2.html), *blogpost*.
+  -  Wickman, H. & Navarro, D. & Pedersen T. L. (2018). [ggplot2: Elegant Graphics for Data Analysis](https://ggplot2-book.org/). O'Reilly.   
+  - Chang, W. [R Graphics cookbook](https://r-graphics.org/)
+  - Scherrer, Cédric [A ggplot2 tutorial for Beautiful plotting in R](https://www.cedricscherer.com/2019/08/05/a-ggplot2-tutorial-for-beautiful-plotting-in-r/?fbclid=IwAR3uRUJBCeRcQ46E1Z_GIWn0B4tE9KJiAHTRSi7tYxySmEuANgrEDVLQhJQ#prep)
+  
+
+
+
+
+ 

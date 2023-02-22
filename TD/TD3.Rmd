@@ -1,0 +1,115 @@
+---
+title: "Correction TD3"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TD 3
+### Exercice 1
+#### 1)
+On va utiliser le jeu de données **nycflights13**
+```{r}
+library(nycflights13)
+library(tidyverse)
+data(flights)
+```
+Trouver tout les vols
+- ayant eu plus de deux heures de retard
+- vers Houston (`IAH` ou `HOU`), on utilisera l'opérateur `%in%`
+- opérés durant l'été (Juillet, Aout, Septembre)
+- ayant eu plus de deux heures de retards mais sans retard au départ
+- Ont décollé entre minuit et 6 heure du matin
+```{r}
+# Vols avec plus de deux heures de retard
+flights %>% filter(arr_delay /60 > 2) %>% select(arr_delay)
+# Vols vers Houston 
+flights %>% filter(dest %in% c('IAH', 'HOU')) %>% select(dest)
+#Vols d'été
+flights %>% filter(month >= 7 & month <= 9) %>% select(month)
+#Vols ayant eu plus de deux heures de retards mais sans retard au départ
+flights %>% filter(dep_delay == 0 & arr_delay /60 > 2) %>% select(dep_delay, arr_delay)
+# Vols ayant décollé entre minuit et 6 heures du matin inclus
+flights %>% filter(floor(dep_time / 100) < 6 | dep_time == 600) %>% select(dep_time)
+```
+### 2)
+Fusionner les tables `flights` et `airlines`, ne conserver que les variables `òrigin, dest, name`, et `carrier` et les vols par United, American ou Delta airline. Utiliser un *pipe* pour accomplir ces actions, et l'opérateur `like` pour la sélection des observations.
+```{r}
+library(DescTools)
+left_join(flights, airlines, by = 'carrier') %>% select(origin, dest, carrier, name) %>% filter(name %like% "United%" | name %like% "American%" | name %like% "Delta%")
+```
+
+### 3)
+Créer une table `flights_V1` à partir de la table `flights` en ajoutant une variable permettant le calcul du temps rattrapé en vol, puis sélectionner les vols qui sont partis avec au moins une heure de retard mais sont parvenu à récupéré plus de 30 minutes durant le vol. N'inclure que les variables `origin, dest, carrier, dep_delay, distance` ainsi que la nouvelle variable. Afficher les cinq premières observations de `flights_V1`, copier et coller le tableau. 
+```{r}
+library(knitr)
+
+flights_V1 <- flights %>% mutate(
+  in_flight = dep_delay - arr_delay 
+) %>% filter(dep_delay / 60 > 1 & in_flight > 30) %>% select(origin, dest, carrier, dep_delay, in_flight, distance)
+kable(flights_V1[1:5, ])
+flights_V1[1:5, ]
+```
+
+### 4)
+Trier `flights` du vol avec le plus de retard au départ au vols ayant le moins de retard (voire de l'avance), n'inclure que les variables `carrier, origin, dest` et `dep_delay`.
+```{r}
+flights %>% arrange(desc(dep_delay)) %>% select(carrier, origin, dest, dep_delay)
+```
+
+### 5)
+Créer la table `flights_V2` à  partir de `flights` dans laquelle les variables `dep_time` et `sched_dep_time` en nombre de minutes depuis minuit. N'inclure que les variables
+`dep_time, sched_dep_time` et les deux nouvelles variables qu'on appellera `dep_time_V1`et `sched_dep_time_V1`. Afficher les 5 première observations en utilisant   
+`kable()` pour copier et coller votre tableau, pas de code R. 
+```{r}
+flights_V2 <- flights %>% mutate(
+  dep_time_V1 = floor(dep_time / 100) * 60 + (dep_time -   floor(dep_time / 100) * 100),
+  sched_dep_time_V1 = floor(sched_dep_time / 100) * 60 + (sched_dep_time -   floor(sched_dep_time / 100) * 100)
+  ) %>% select(dep_time, dep_time_V1, sched_dep_time, sched_dep_time_V1) 
+flights_V2[1:5, ]
+```
+### 6)
+Créer une table `average_delay` donnant le retard moyen à l'arrivées des vols et le nombre de vols pour chaque mois. Tracer le retard moyen en fonction du mois de l'année. 
+
+- Le graphique doit être un nuage de point pondéré par le nombre de vol. 
+- Donner un nom à l'axe des abscisses et des ordonnées. 
+- Faites en sorte que la graduation de l'axe des x fasse bien apparaître chaque mois.
+- Ajouter la droite x = 0 comme ligne horizontale de référence
+
+```{r}
+average_delay <- group_by(flights, month) %>%
+  summarise(n_flight = n(), av_delay = mean(arr_delay, na.rm = T))
+  ggplot(data = average_delay) + geom_point(mapping = aes(x = month, y = av_delay, size = n_flight)) + xlab("Mois de l'année") + ylab("Retard moyen enregistré") + geom_hline(yintercept = 0) + scale_x_continuous(breaks = 1:12)
+```
+### 7)
+Créer une table `average_daily_America_United` qui donne le retard moyen à l'arrivée des vols et le nombre de vols pour chaque jour des compagnies *American* et *United airline*. Tracer le retard moyen en fonction du jour de l'année pour les deux compagnies, le jour de l'année doit être donné par une variable `date_dep` sous le format `Date`. Le graphique doit contenir la courbe associée à chacune des compagnies, utiliser la fonction **geom_smooth** afin de lisser les courbes. Coller simplement l'image, pas de code R. 
+```{r}
+library(DescTools)
+average_daily_America_United <- left_join(flights, airlines, by = 'carrier') %>% 
+  filter(name %like% 'American%' | name %like% 'United%') %>% 
+  mutate(date_dep = as.Date(paste0(day, '/', month, '/', year), format = '%d/%m/%Y')) %>% 
+  group_by(date_dep, name) %>% 
+  summarise(average_daily_delay = mean(arr_delay, na.rm = T))
+
+ggplot(data = average_daily_America_United, mapping = aes(x = date_dep, y = average_daily_delay, colour = name)) + geom_smooth()
+```
+### 8)
+On souhaite créer un tableau contenant le pourcentage de vol en retard par combinaison compagnie aérienne / aéroport de départ. Créer la table `worst_delay` contenant les variables `carrier, origin, number_delay, number_flight` et `prop_delay`. La table donne pour chaque combinaison de modalité sur les variables `carrier` et `origin`:
+
+- le nombre de vol en retard `number_delay`
+- le nombre de vol total `number_flight
+- la proportion de vol en retard `prop_delay`
+
+Trier la table suivant la variable `prop_delay` de façon à afficher d'abord les combinaisons compagnie aérienne / aéroport de départ ayant la plus grande proportion de vol en retard. Afficher les cinq premières observations de `worst_delay`.  
+```{r}
+worst_delay <- left_join(
+  flights %>% mutate(delaid = arr_delay > 0) %>% group_by(carrier, origin, delaid) %>% summarize(number_delay = n()) %>% filter(!is.na(delaid)), 
+  flights %>% group_by(carrier, origin) %>% summarize(number_flight = n()), by = c('carrier', 'origin')) %>% mutate(prop_delay = number_delay / number_flight) %>% arrange(desc(prop_delay)) %>% select(-delaid)
+worst_delay[1:5, ]
+```
+
+

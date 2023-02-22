@@ -1,0 +1,208 @@
+---
+title: "Correction TD4"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TD 4
+### Exercice 1
+#### 1)
+Regarder la fonction `unique()` et écrire une fonction `unique_mine()` qui reproduit la fonction `unique()`. Mettre le code R
+```{r}
+#' unique_myown prend en argument un vecteur et renvoit un vecteur sans les doublons du vecteur initial
+#'
+#' @param x : un vecteur
+#'
+#' @return un vecteur ne contenant que des éléments distinct
+#' @export
+#'
+#' @examples
+unique_myown <- function(x){
+  x_unique <- vector()
+  for(k in 1:length(x)){
+    if(x[k] %in% x_unique){
+      x_unique[k] <- NA
+    }else{
+      x_unique[k] <- x[k]
+    }
+  }
+  return(x_unique[!is.na(x_unique)])
+}
+
+#Test de la fonction
+x = c(1,2,1,45,2,3)
+unique(x) == unique_myown(x)
+
+```
+#### 2)
+Ecrire une fonction `rev_myown` qui reproduit la fonction rev. Mettre le code R.
+```{r}
+#' rev_myown reproduit la fonction rev
+#'
+#' @param x : un vecteur
+#'
+#' @return un vecteur dont l'ordre est exactement l'inverse du vecteur x
+#' @export
+#'
+#' @examples
+rev_myown <- function(x){
+  x[sort(1:length(x), decreasing = T)]
+}
+
+x <- c(14, 47, 104, 89)
+rev_myown(x)
+rev(x)
+```
+### Exercice 2
+#### 1)
+Ecrire une fonction `variance` prenant en argument un vecteur `x ($x = (x_1, \ldots, x_n)$)` et un booléen `biased` qui retourne l'estimateur biasé  
+$$
+\tilde{S}_n^2 = \frac{1}{n}\sum_{k=1}^{n}(x_k - \bar{x})^{2}
+$$
+de la variance, où $\bar{x}=\frac{1}{n}\sum_{k=1}^{n}x_k$ désigne la moyenne empirique, lorsque `biased = TRUE` et l'estimateur non-biasé
+$$
+\widehat{S}_{n}^2 = \frac{1}{n-1}\sum_{k=1}^{n}(x_k - \bar{x})^{2}
+$$
+de la variance lorsque `biased = FALSE`. On n'utilisera pas la fonction `var`. Mettre le code R.
+```{r}
+#' variance calcule la variance empirique d'une suite d'observations
+#'
+#' @param x vecteur numérique
+#' @param biased booléen indiquant si l'estimateur biasé ou sans biais est évalué
+#'
+#' @return la variance empirique
+#' @export
+#'
+#' @examples
+variance <- function(x, biased){
+  if(biased){
+    est <- mean((x - mean(x))^{2})
+  }else{
+    est <- sum((x - mean(x))^{2}) / (length(x) - 1)
+  }
+  return(est)
+}
+
+# Variance empirique sans biais d'un échantillon de taille 2000 de réalisations d'une variable aléatoire de loi normale centrée réduite
+variance(rnorm(2000), F)
+```
+### 2)
+Ecrire une fonction `harmonique_mean` prenant en argument un vecteur `x ($x = (x_1, \ldots, x_n)$)` qui retourne la moyenne harmonique définit par 
+$$
+\widehat{H}_{n} = \frac{n}{\sum_{k=1}^{n}\frac{1}{x_k}}
+$$
+```{r}
+#' harmonique_mean calcule la moyenne harmonique d'une série d'observation
+#'
+#' @param x vecteur numérique 
+#'
+#' @return la moyenne harmonique
+#' @export
+#'
+#' @examples
+harmonique_mean <- function(x){
+  length(x) / mean(1 / x)
+}
+
+# Moyenne harmonique d'un échantillon de taille 1000 de réalisations d'une variable aléatoire de loi exponentielle de paramètre 1.
+harmonique_mean(rexp(1000, rate = 1))
+```
+## Exercice 3
+La valeur actuelle d'une série de paiement ($\text{Pmt} = (P_1,\ldots, P_n)$) effectué chaque fin de période est donnée par 
+$$
+\text{VA}(\text{Pmt}, \text{Tx}) = \sum_{k=1}^{n}\prod_{l=1}^{k}(1+i_l)^{-1}P_k
+$$
+où $\text{Tx} = (i_1,\ldots, i_n)$ représente les taux d'intérêt applicable chaque période. Ecrire une fonction qui prend en argument un vecteur de paiment `Pmt` et un vecteur de taux d'intérêt et qui renvoit la valeur actuelle de la série de paiements. Mettre le code R. Pas de boucle `for`.
+```{r}
+#' Calcule_VA calcule la valeur actuelle de la somme d'une série de paiement
+#'
+#' @param Pmt vecteur numérique de paiment 
+#' @param Tx vecteur numérique de taux d'intérêt
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Calcule_VA <- function(Pmt, Tx){
+  cumprod(1 / (1 + Tx)) %*% Pmt
+}
+
+Tx = rep(0.05, 5)
+Pmt = rep(100, 5)
+# Calcul de la valeur actuelle d'une série de versement de montant 100 au taux d'actualisation fixe de 5%
+Calcule_VA(Pmt, Tx)
+```
+
+## Exercice 4
+### 1)
+
+Deux dés à trois faces sont utilisés pour simuler le mouvement des indices boursiers. 
+- Le premier dé donne la direction du mouvement `baisse, hausse, nul`
+- Le deuxième dé donne l'amplitude du mouvement à la hausse ou à la baisse le cas échéant. Les valeurs possibles sont `5, 10, 20`. 
+
+Ecrire une fonction `simule_indice` qui prend en argument la valeur initiale de l'indice boursier `x0` et l'horizon de projection `horizon`
+et qui renvoit un data frame contenant `horizon` lignes et $4$ variables 
+
+- `periode` la période en cours
+- `Direction` le mouvement de l'indice sur la période en cours
+- `Amplitude` l'amplitude du mouvement sur la période en cours (égale à $0$ en case de mouvement nul `Direction==nul`)
+-  `Xt` la valeur de l'indice en fin de période. 
+
+Générer un tableau avec `T=10` et `x0 = 10`, mettre le code et coller le tableau.
+```{r}
+#' simule_indice
+#'
+#' @param horizon Nombre entier égale à l'horizon de projection
+#' @param x0 Valeur initiale de l'indice boursier
+#'
+#' @return Un data frame contenant 4 variables dont l'indice de la période courante, la direction de l'iondice et l'amplitude de la variation au cours de la période et la valeur de l'indice en fin de période
+#' @export
+#'
+#' @examples
+
+simule_indice <- function(horizon, x0){
+  # Directions possibles
+  direction <- c("hausse", "baisse", "nul")
+  # Amplitudes possibles
+  amplitude <- c(5, 10, 20)
+  # Simulation des dircetion jusqu'à la fin de la projection
+  direction_vec <- sample(direction, horizon, replace = T)
+  amplitude_vec <- rep(0, horizon)
+  for(k in 1:horizon){
+    if(direction_vec[k] == "nul"){
+      
+      amplitude_vec[k] <- 0
+      
+    }else if(direction_vec[k] == "baisse"){
+        
+      amplitude_vec[k] <- - sample(amplitude, 1)
+      
+    }else{
+        
+      amplitude_vec[k] <-  sample(amplitude, 1)
+      
+      }
+    
+  }
+  data.frame(periode = 1:horizon,  direction = direction_vec, amplitude = amplitude_vec, indice = x0 + cumsum(amplitude_vec))
+}
+
+simule_indice(horizon = 10, x0 = 100)
+
+```
+### 2)
+Utiliser la fonction pour générer une trajectoire de l'indice boursier sur 2000 périodes d'exercice, on prendra $100$ comme valeur initiale. Tracer le graphique de la valeur de l'indice en fonction du temps. mettre le code et l'image.
+```{r}
+library(ggplot2)
+# Création du data frame
+indice_2000 <- simule_indice(2000, 100)
+#Construction du graphique
+ggplot(data = indice_2000) + geom_line(mapping = aes(x = periode, y = indice)) + xlab("période d'exercice") + ylab("Valeur de l'indice") + ggtitle("Evolution de l'indice boursier")  + theme(plot.title = element_text(hjust = 0.5))
+```
+
+

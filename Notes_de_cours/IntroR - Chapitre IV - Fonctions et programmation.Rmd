@@ -1,0 +1,203 @@
+---
+title: "IntroR - Chapitre IV - Fonction et programmation"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+L'objectif de ce chapitre est de définir ses propres fonctions. La première étape est d'introduire les structures de contrôle, c'est à dire les boucle `for` et des instructions `if`. 
+
+# Structure de contrôle 
+## Exécution conditionnelle
+
+`if(condition) {branche.vraie} else{branche.faux}`. Si la condition est vérifié on éxécute le code dans la `branche.vraie`, sinon on éxécute le code dans la `branche.fausse`.
+```{r}
+# Réalisation d'une variable aléatoire de loi binomiale
+bin_number = rbinom(1, size = 10, prob = 0.4)
+bin_number
+# L'opérateur %% est l'opérateur modulo !
+if(bin_number %% 2 == 0){
+  print("le nombre est pair")
+}else{
+  print("le nombre est impair")
+}
+```
+## Boucle 
+R n'est pas un langage optimisé pour l'usage des boucles `for`, elles sont à proscrire autant que possible.
+
+`for(variables in suite){expr}`. Les éléments dans `suite` ne sont pas nécessairement des nombres. 
+```{r}
+# Impression des 10 premiers entier 
+for(k in 1:10){
+  print(k)
+}
+```
+```{r}
+# Impression des entier par pas de 3
+for(k in seq(1, 10, 3)){
+  print(k)
+}
+```
+Lorsque le nombre d'itération n'est pas connu à l'avance, l'instruction `while` est utilisée.
+
+`while(condition){expr}`. Tant que la condition est vérifié, on exécute les instructions. 
+```{r}
+x <- 1
+while(x < 30){
+  print(x)
+  x <- exp(x)
+}
+x
+```
+Une autre façon de définir une boucle est l'instruction  `repeat` qui va de paire avec l'instruction `break`. 
+
+`repeat{expr; if(condition) break}`
+
+```{r}
+x <- 1
+repeat{
+  print(x)
+  x <- exp(x)
+  if(x > 40) break
+}
+x
+
+```
+
+
+Il est possible d'inclure des éxécutions conditionelles dans une boucle. Par exemple, si nous souhaitons (pour d'obscures raisons) créer un vecteur contenant des entiers de $1$ à $100$ sans les multiples de $10$ et afficher les multiples de $10$ alors 
+```{r}
+# Initialisation du vecteur souhaité
+vec = vector()
+j = 0
+for(k in 1:100){
+  if(k %% 10 == 0){
+    print(k)
+  }else{
+    j <- j+1
+    vec[j] <- k
+  }
+}
+vec
+```
+
+# Les fonctions définis par l'utilisateur
+`fun <- function(arguments){expr}` où
+
+- `fun` désigne le nom de la fonction
+- `arguments` sont les paramètres de la fonction séparés par des virgules 
+- `expr` constitue le corps de la fonction
+
+En général, une fonction retourne un résultat qui est la dernière ligne de code du corps de la fonction. Si le résultat n'est pas la dernière ligne alors on peut utiliser l'instruction `return()`. Lorsqu'une fonction a plusieurs résultats, elle doit retourner une liste nommée. 
+
+Toute variable définie dans le corps d'une fonction est dite *locale* à cette fonction. Nous allons écrire une fonction permettant de simuler des montants agrégés de sinitres. Sur une période d'exercice donnée, par exemple un an, le montant total des sinistres associés à un portefeuille de contrats d'assurance non vie est donnée par
+
+$$
+X = \sum_{k=1}^{N}U_k,
+$$
+où
+
+ - $N$ est une variable aléatoire de comptage
+ - $(U_k)_{k\in \mathbb{N}}$ forme une suite **i.i.d.** de variables aléatoires positives
+ - $N$ et $U_1, U_2,\ldots$ sont indépendants.
+ 
+ Cette fonction doit renvoyer l'échantillon ainsi que la proportion de montant agrégé nuls. 
+ 
+ Quels sont les paramètres d'une telle fonction?
+ 
+ - La loi de probabilité du nombre de sinistre `loi_N`
+ - La loi de probabilité des montants de sinsitres `loi_U`
+ - Les paramètres de chacune des loi de probabilités `params_loi`
+ - La taille de l'échantillon `sample_size`
+ 
+La première étape est de trouver un nom pour la fonction, qui est souvent un verbe à la forme active, par exemple `simulate_X`. Une fois les paramètres ajoutés, la documentation de la fonction est générée via `Ctrl + Alt + Shift + R` ou `Code > Insert Roxygen Skeleton`.
+
+Une bonne pratique est d'assigner des valeurs par défaut aux paramètres. 
+
+```{r}
+#' simulate_X: Simule un échantillon de montants agrégé de sinitre
+#'
+#' @param loi_N : Loi du nombre de sinistres c('binom', 'nbinom', 'pois')
+#' @param loi_U : Loi des montant de sinistre c('gamma', 'lnorm')
+#' @param params_loi : c(c(size_N, 0), c(prob_N, lam), c(shape_U, meanlog_U), c(scale_U, sdlog_U))
+#' @param sample_size : Taille de l'échantillon
+#'
+#' @return Un échantillon de montant agrégé de sinistres
+#' @export
+#'
+#' @examples
+#
+# Le nom de la fonction est généralement un verbe en forme active
+# Une fois les paramètres choisis, on génère la documentation
+# On peut initialiser les paramètres avec des valeurs par défaut
+# Par exemple par défaut on génère des réalisations de loi Poisson-exponentielle
+simulate_X <- function(loi_N = 'pois', loi_U = 'gamma', params_loi, sample_size = 1){
+  # Simulation des nombres de sinistre nn fonction de la loi choisi
+  if( loi_N == 'pois'){# Loi de Poisson
+    
+    N_vec <- rpois(n = sample_size, lambda = params_loi[2]) 
+    
+  }else if(loi_N == 'binom'){# Loi binomiale
+    
+    N_vec <- rbinom(n = sample_size, size = params_loi[1], prob= params_loi[2])
+    
+  }else{# Loi négative binomiale
+    
+    N_vec <- rnbinom(n = sample_size, size = params_loi[1], size = params_loi[2])
+    }
+  # Somme des montants de sinistres pour chaque réalisation du nombre de sinistre en fonction de la loi des montants
+  if(loi_U == "gamma"){
+    
+    X_vec <- unlist(lapply(N_vec, function(N) sum(rgamma(N, shape = params_loi[3], scale = params_loi[4]))))
+    
+  }else if(loi_U == "lnorm"){
+    
+    X_vec <- unlist(lapply(N_vec, function(N) sum(rlnorm(N, meanlog = params_loi[3], sdlog = params_loi[4]))))
+    
+  }
+  
+res <- list(X_vec, mean(X_vec == 0))
+names(res) <- c('echantillon', 'prob0')
+
+return(res)
+}
+# Test de la fonction
+simulate_X(loi_N = 'binom', loi_U = 'lnorm', params_loi = c(10, 1/2, 0, 1), sample_size = 20)
+```
+# Element de deboguage
+Il existe plusieurs outils pour régler un problème technique dans une fonction qu'il s'agisse d'un résultat inattendu ou d'une erreur de syntaxe. Il est question dans cette section de la fonction browser, d'autres outils de deboguage existe, voir par exemple cette [video](https://vimeo.com/99375765). 
+La fonction suivante a pour but l'approximation par simulation de la fonction de répartition de la variable aléatoire $X$ définit précédemment. 
+
+```{r}
+#' approximate_fdr_X approche numériquement la fonction de répartition de X via Monte Carlo
+#'
+#' @param x : Evaluation de la FDR en x
+#' @param loi_N : Loi du nombre de sinistres c('binom', 'nbinom', 'pois')
+#' @param loi_U : Loi des montant de sinistre c('gamma', 'lnorm')
+#' @param params_loi : c(c(size_N, 0), c(prob_N, lam), c(shape_U, meanlog_U), c(scale_U, sdlog_U))
+#' @param sample_size : Taille de l'échantillon
+#'
+#' @return La valeur de la fonction de répartition de X en x
+#' @export
+#'
+#' @examples
+approximate_fdr_X <- function(x = 0, loi_N = 'pois', loi_U = 'gamma', params_loi = c(0, 1, 1, 1), sample_size = 1){
+  browser()
+  sample_X <- simulate_X(loi_N, loi_U, params_loi, sample_size)$echantillon
+  sum(sample_X <= x) / length(sample_X)
+}
+
+# approximate_fdr_X(0,'nbinom','gamma', c(5, 1/5, 1, 1), 100)
+```
+Il y a bien une erreur dans la fonction `simulate_X`.
+
+# Références 
+  - Goulet, V. (2012). [Introduction à la programmation en R](https://cran.r-project.org/doc/contrib/Goulet_introduction_programmation_R.pdf).   
+

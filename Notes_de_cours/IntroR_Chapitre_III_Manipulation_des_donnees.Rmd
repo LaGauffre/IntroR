@@ -1,0 +1,293 @@
+---
+title: "IntroR - Chapitre III - Manipulation des données"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+L'objectif est de passer en revue les différentes fonctions de la librairie **dplyr**
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+```
+permettant par exemple de
+
+- créer de nouvelles variables
+- sélectionner des observations
+- renommer des variables 
+- etc...
+
+Ces différentes opérations sont appliquées sur le jeu de données **flights** de la librairie **nycflights13**
+```{r}
+library(nycflights13)
+flights
+```
+Le jeu de données **flights** est un *tibble* une variante de data frame optimisé pour l'usage des fonction de **tidyverse**. 
+```{r}
+library(tibble)
+```
+
+Nous allons nous focaliser sur les cinq fonctions clés de la librairie **dplyr**, à savoir 
+
+- **filter()** pour filtrer les observations en fonction de leur valeur
+- **arrange()** pour ordonner les observations
+- **select()** pour sélectionner les variables
+- **mutate()** pour créer de nouvelles variables à partir de variables existantes
+- **summarize()** pour agréger plusieurs observations
+
+Ces fonctions s'utilisent en parallèle de la fonction **group_by()** permettant le traitement par groupe d'observations. Elles prennent toujours comme premier argument le data frame sur lequel on travaille.  
+
+# Sélectionner des observations avec **filter()**
+```{r}
+# Sélection des vols du 1er Janvier. 
+filter(flights, month == 1 & day == 1)
+```
+```{r}
+# Sélection des vols de novembre et de décembre
+filter(flights, month == 11 | month == 12)
+```
+```{r}
+# Autre alternative avec l'opérateur %in%
+filter(flights, month %in% c(11, 12))
+```
+
+# Trier les observations avec **arrange()**
+```{r}
+# Trier par année, mois jours
+arrange(flights, year, month, day)
+```
+On utilise la fonction **desc()** pour trier par ordre décroissant. 
+```{r}
+# Trie en fonction du retard par ordre décroissant
+arrange(flights, desc(dep_delay))
+```
+Les valeurs manquantes sont toujours placées à la fin. 
+
+# Sélectionner des variable avec **select()**
+```{r}
+# Conserve toutes les variables entre year et day (inclus)
+select(flights, year:day)
+```
+```{r}
+# Sélectionne toute les variables exceptées celles entre year et day (inclus)
+select(flights, -(year:day))
+```
+
+La sélection des variables est facilitée par l'utilisation des fonctions suivantes
+
+- **start_with('abc')**
+- **end_with('xyz')**
+- **contains('ijk')**
+- **num_range(x, 1:3)** => x1, x2 et x3.
+
+# Créer des variables avec **mutate()**
+```{r}
+# Table flights_sml contenant une sélection de variables. 
+flights_sml <- select(flights, 
+  year:day, 
+  ends_with("delay"), 
+  distance, 
+  air_time
+)
+# Calcul du rattrapage de retard et de la vitesse
+mutate(flights_sml,
+  during_flight_delay = arr_delay - dep_delay,
+  speed = distance / air_time * 60
+)
+
+```
+
+On peut aussi faire référence aux variables que l'on vient de créer
+
+```{r}
+mutate(flights_sml,
+  during_flight_delay = arr_delay - dep_delay,
+  hours = air_time / 60,
+  during_flight_delay = during_flight_delay / hours
+)
+
+```
+
+En utilisant la fonction transmute, on ne conserve que les variables nouvellement créées
+
+```{r}
+transmute(flights,
+  during_flight_delay = arr_delay - dep_delay,
+  hours = air_time / 60,
+  gain_per_hour = during_flight_delay / hours
+)
+```
+Parmi les fonctions utiles pour la création de variable, on compte les fonctions décalages **lag()** et **lead()**
+```{r}
+x <- 1:10
+lag(x)
+lead(x)
+```
+Ces fonctions sont utiles pour calculer des variations successives avec **x-lag(x)** ou détecter un changement de valeur **x != lag(x)** et les fonctions cumulatives **cumsum()**, **cumprod()**, **cummin()**, **cummax()** et **cummean()**
+
+```{r}
+# Sommes cumulées
+cumsum(x)
+```
+```{r}
+# Moyennes mobiles
+cummean(x)
+```
+# Résumés statistiques avec **summarise()** et **group_by()**
+
+La fonction **summarize()** réduit le data frame à une seule ligne
+
+```{r}
+summarise(flights, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+Elle n'est pas très utile à moins d'être combinée avec **group_by()**. On peut ainsi obtenir la moyenne des retards au départ des vols pour chaque jour
+
+```{r}
+by_day <- group_by(flights, year, month, day)
+summarise(by_day, delay  = mean(dep_delay, na.rm = T))
+```
+
+# Combiner des opérations à l'aide d'un *pipe*
+Nous souhaitons étudier la relation entre la distance et le retard.
+
+```{r}
+library(ggplot2)
+# On regroupe les vols par destinations
+by_dest <- group_by(flights, dest)
+
+# On calcule une distance moyenne et un retard moyen par destination
+# La variable count = n() permet de conserver le nombre d'observations placées dans chaque groupe. 
+delay <- summarise(by_dest,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE)
+)
+
+# Nuage de point pondéré par la variable count() sur lequel on ajoute une courbe de tendance polynomial 
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count)) +
+  geom_smooth(method = loess)
+```
+
+On observe une tendance décroissante qui tend à conjecturer qu'une longue distance donne au pilote plus de marge pour rattraper le retard du vol. Une dernière opération peut être effectuée afin par exemple d'enlever l'aeroport d'Honolulu et les aéroports avec très peu de vol qui semble être souvent des valeurs marginales. 
+
+```{r}
+#On enlève les vols vers Honolulu et les destinations avec moins de 20 vols
+delay <- filter(delay, count > 20, dest != "HNL")
+# On refait le même graphique que précédemment
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count)) +
+  geom_smooth(se = FALSE)
+```
+
+Le *pipe* **%>%** permet de ne pas créer des data frames intermédiaires et améliore la lisibilité du code
+
+```{r}
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(
+    count = n(),
+    dist = mean(distance, na.rm = TRUE),
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>% 
+  filter(count > 20, dest != "HNL")
+```
+
+# Fusion de deux tables avec **left_join()**
+
+Une fusion de deux data frames permet la création d'un nouveau data frame contenant plus de variables. La combinaison des deux data frames initiaux est possible du fait de la présence d'une ou plusieurs variables en commun dans les deux data frames. La librairie **nycflights13** contient plusieurs jeu de données.
+
+```{r}
+data(flights)
+data(airports)
+data(airlines)
+```
+
+la variable **carrier** dans la table **flights** contient indique la compagnie ayant opéré le vol. 
+
+```{r}
+flights %>% select(carrier)
+```
+On souhaite récupérer à l'aide cette information le nom complet de la compagnie aérienne qui est renseigné dans le data frame **airlines**.
+
+```{r}
+airlines
+```
+
+Il est naturel de vouloir associer les deux data frames pour par exemple ajouter l'information **name** dans le data frame **flights**, on utilise pour cela la fonction **left_join**.
+
+```{r}
+left_join(flights, airlines) %>% select(month, day, carrier, name)
+```
+
+Dans cet exemple aucun preprocessing n'est nécessaire. La table **airports** contient des informations relatives aux aéroports
+
+```{r}
+data("airports")
+airports
+```
+
+La variable **faa** contient le code de l'aéroport, cette information est aussi présente dans la table **flights** avec la variable **origin** correspondant à l'aéroport de départ et **dest** pour l'aéroport d'arrivée. 
+
+```{r}
+flights %>% select(day, month, origin, dest)
+```
+La fusion direct de ces deux tables renvoit un message d'erreur
+
+```{r}
+# left_join(flights, airports)
+```
+
+En effet, il est nécessaire de préciser la variable qui fera le lien entre les deux tables via l'option **by=**. Pour simplifier l'affichage, nous effectuons les opérations sur des tables contenant moins de variables avec 
+
+```{r}
+flights_ex <- flights %>% select(origin, dest,  day, month)
+airports_ex <- airports %>% select(faa, name, tzone)
+```
+ 
+```{r}
+left_join(flights_ex, airports_ex, by = c(origin = 'faa'))
+```
+
+Il existe plusieurs types de jointure suivant la relation entre les tables. Considérons les deux tables suivantes 
+
+```{r}
+prof_exp <- data.frame(nom = c('Bienvenue', 'Goffard', 'Milhaud', 'Clot', 'Bienvenue'), expertise = c('proba', 'None', 'stat', 'CS', 'CS'))
+prof_exp
+```
+et 
+```{r}
+prof_prenom <- data.frame(nom = c('Bienvenue', 'Salhi'), prenom = c('Alexis', 'Yahia'))
+prof_prenom
+```
+
+L'ordre dans lequel les tables sont passés en argument de la fonction **left_join()** a son importance.
+
+```{r}
+left_join(prof_exp, prof_prenom, by = 'nom')
+```
+
+Chaque ligne présente dans **prof_exp** se retrouve dans le résultat de la fusion. La ligne **Yahia** présente dans **prof_prenom** mais pas dans **prof_exp** ne se retrouve pas dans la fusion. Les ligne **Milhaud**, **Goffard** et **Clot** sont dans la table issue de la fusion mais l'information pour la variable **prenom** est manquante car non-renseignée dans la table **prof_prenom**. Si on change l'ordre d'apparition dans **left_join**, c'est l'inverse
+
+```{r}
+left_join(prof_prenom, prof_exp, by = 'nom')
+```
+
+Afin d'éviter les valeur manquante, on peut utiliser **inner_join** pour ne conserver que les lignes présentes dans chacune des deux tables. 
+
+```{r}
+inner_join(prof_exp, prof_prenom)
+```
+
+
+# Références 
+  - [Fusion de tables](http://larmarange.github.io/analyse-R/fusion-de-tables.html#jointures-avec-dplyr), *blogpost*.
+  -  Grolemund, G. & Wickman, H. (2018). [R for Data Science](https://r4ds.had.co.nz/). O'Reilly.   
+  -  J. Barnier (2020) [Introduction à R et au *tidyverse*](https://juba.github.io/tidyverse/10-dplyr.html).

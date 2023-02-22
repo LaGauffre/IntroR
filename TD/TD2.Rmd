@@ -1,0 +1,186 @@
+---
+title: "Correction TD2"
+author: "Pierre-O Goffard"
+date: "17 janvier 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TD 2
+
+### Exercice 1 
+
+#### 1)
+
+Nous allons étudier le lien entre taille du moteur et l'efficacité de la consommation d'essence à l'aide du jeu de données **mpg** de la librairie **ggplot2**. Donner le code R permettant de générer la courbe suivante (incluant le nom des axes et le chargement des données).
+```{r}
+library(ggplot2)
+data(mpg)
+help(mpg)
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ  , y  = hwy)) + xlab('litrage du moteur') + ylab("Consommation d'essence (miles par gallons)") 
+
+```
+
+### 2)
+
+On reprend le graphique précédent et on assigne une couleur différente en fonction des modalités sur la variable **class**. Donner votre Code R, Copier et coller votre résultat. 
+```{r}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ  , y  = hwy, colour = class)) + xlab('litrage du moteur') + ylab("Consommation d'essence (gallons par miles)") 
+```
+
+## Exo 2
+
+### 1)
+
+Tracer la densité et la fonction de répartition de la loi normale de moyenne 0 et d'écart-type 1 dans deux graphiques l'un à côté de l'autre. Ajouter 
+
+- un titre sur chaque graphe et veillez à ce que celui-ci soit centré
+- la densité doit etre tracée en rouge
+- la fonction de répartition doit être tracée en bleue
+
+```{r}
+library(gridExtra)
+# Valeur de la densit? de probabilit? 
+normal_pdf = data.frame(grid = seq(-5, 5, 0.01), f_x = dnorm(seq(-5, 5, 0.01)), F_x = pnorm(seq(-5, 5, 0.01)))
+pdf_plot <- ggplot(data = normal_pdf) + geom_line(mapping = aes(x = grid, y = f_x), color = 'red') + xlab('x') + 
+  ggtitle('Densité de probabilité') + theme(plot.title = element_text(hjust = 0.5))
+cdf_plot <- ggplot(data = normal_pdf) + geom_line(mapping = aes(x = grid, y = F_x), color = 'blue') + xlab('x') + 
+  ggtitle('Fonction de répartition') + theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(pdf_plot, cdf_plot, ncol=2)
+```
+
+### 2)
+
+Tracer sur un même graphique la densité de la loi normale 
+
+- de moyenne $1$ et d'écart type $3$ 
+- de moyenne $-1$ et d'écart-type $0.5$
+- de moyenne $0$ et d'écart-type $1$
+
+Chaque courbe doit être de couleur différente, et il faut une légende pour accompagner le graphique
+
+Mettez simplement l'image.
+
+```{r}
+normal_pdf_1_3 = data.frame(grid = seq(-10, 10, 0.01), f_x = dnorm(seq(-10, 10, 0.01), mean = 1, sd = 3), parametrisation =  'mu = 1 et sigma = 3')
+normal_pdf_moins1_0.5 = data.frame(grid = seq(-10, 10, 0.01), f_x = dnorm(seq(-10, 10, 0.01), mean = -1, sd = 0.5), parametrisation =  'mu = -1 et sigma = 0.5')
+normal_pdf_0_1 = data.frame(grid = seq(-10, 10, 0.01), f_x = dnorm(seq(-10, 10, 0.01), mean = 0, sd = 1), parametrisation =  'mu = 0 et sigma = 1')
+normal_pdfs = rbind(normal_pdf_1_3, normal_pdf_moins1_0.5, normal_pdf_0_1)
+ggplot(data = normal_pdfs) + geom_line(mapping = aes(x = grid, y = f_x, color = parametrisation))
+```
+
+## Exo 3
+
+### 1)
+
+Simuler un échantillon de taille $1000$ de loi de Bernoulli de paramètre $p=0.6$. Calculer les moyennes successives $M_l = S_l / l$, avec $S_l =\sum_{k=1}^{l}x_k$ et $l=1,\ldots, 1000$ et tracer $M_l$ en fonction des valeurs de $l$. J'aimerais un nuage de points reliés. 
+```{r}
+# Echantillon de loi de Bernouilli 
+sample_Bernoulli <- rbinom(1000, size = 1, prob = 0.6)
+# Moyenne successive
+successive_mean <- cumsum(sample_Bernoulli)/(1:1000)
+# On crée le data frame
+successive_mean_df <- data.frame(sample_size = 1:1000, successive_mean)
+# On trace la courbe des moyennes successives
+ggplot(data = successive_mean_df, mapping = aes(x = sample_size, y = successive_mean)) +
+  geom_point() + geom_line()
+```
+
+### 2)
+
+Générer des échantillons $S_1, \ldots, S_{1000}$ de taille $1000$ de loi binomiale de paramètres $p = 0.5$ et 
+
+- $N = 10$
+
+- $N = 30$
+
+- $N = 1000$
+
+Stocker dans trois vecteurs (**U10**, **U30** et **U1000**) les quantités 
+$$
+\frac{S_i- Np}{\sqrt{Np(1-p)}},\text{ }i = 1,\ldots 1000.
+$$
+pour chaque valeur de $N\in\{10,30,1000\}$. Tracer les histogrammes pour chacune des valeurs de $N$ et placer les les uns à côté des autres. Ajouter par dessus l'histogramme la desnité de la loi normal de moyenne 0 et d'écart type 1. Faites bien attention à l'échelle de l'axe des Y de l'histogramme.
+```{r}
+library(gridExtra)
+# Echantillon de loi binomiale avec leur paramètre de taille
+binom_samples = lapply(c(10,30,1000), function(N) list(N, rbinom(1000, size = N, prob = 1/2)))
+# Les quantités demandées dans l'énoncé
+quantities = lapply(binom_samples, function(bin_samp) data.frame( quantity = (bin_samp[[2]]- bin_samp[[1]]/2) / sqrt(bin_samp[[1]] / 4)))
+# Les trois histogrammes
+hist_1 <- ggplot(quantities[[1]], aes(x = quantity)) + 
+  geom_histogram(aes(y = ..density..),
+                 breaks = seq(-3, 3, by = 0.3), 
+                 colour = "black", 
+                 fill = "white") +
+  # La fonction stat_function permet d'ajouter une courbe de référence
+   stat_function(fun = dnorm, args = list(mean = 0, sd = 1))
+hist_2 <- ggplot(quantities[[2]], aes(x = quantity)) + 
+  geom_histogram(aes(y = ..density..),
+                 breaks = seq(-3, 3, by = 0.3), 
+                 colour = "black", 
+                 fill = "white") +
+   stat_function(fun = dnorm, args = list(mean = 0, sd = 1))
+hist_3 <- ggplot(quantities[[3]], aes(x = quantity)) + 
+  geom_histogram(aes(y = ..density..),
+                 breaks = seq(-3, 3, by = 0.3), 
+                 colour = "black", 
+                 fill = "white") +
+   stat_function(fun = dnorm, args = list(mean = 0, sd = 1))
+grid.arrange(hist_1, hist_2, hist_3, ncol=3)
+```
+
+## Exercice 4
+
+### 1)
+
+Charger le jeu de données **Datacar** via le Package **insuranceData**. Nous allons étudier l'occurence de sinistres en fonction du genre. Sur un même graphique, afficher un diagramme en barre pour chaque modalité de la variable **gender** pour étudier la répartition des modalités sur la variable **clm** au sein des classe définie par la variable **gender**. Sur le graphique donner au dessus de chaque bar le pourcentage ligne/colonne correspondant (c'est à dire pour la barre associée à la modalité 'F' sur la variable **gender** et '0' sur la variable **clm**, donner la proportion de modalité '0' parmi les observations admettant la modalité 'F')
+```{r}
+library(questionr)
+library(insuranceData)
+library(scales)
+data("dataCar")
+names(dataCar)
+# Transformation de la variable clm en variable catégorielle
+dataCar$clm <- as.factor(dataCar$clm)
+# Tableau de contingence 
+tab <- table(dataCar$gender, dataCar$clm)
+pourcentage_ligne <- lprop(tab)
+# Diagramme en bar 
+ggplot(data = dataCar) + geom_bar(mapping = aes(x = gender, fill = clm), position = 'dodge') + 
+  # Pour afficher les valeurs sous le format pourcentage
+  #scale_y_continuous(labels = percent) + 
+  ylab('pourcentage') +
+  annotate("text", x=0.75, y=tab[1,1]+2000, label= paste(round(pourcentage_ligne[1,1]), '%')) +
+  annotate("text", x=1.25, y=tab[1,2]+2000, label= paste(round(pourcentage_ligne[1,2]), '%')) +
+  annotate("text", x=1.75, y=tab[2,1]+2000, label= paste(round(pourcentage_ligne[2,1]), '%')) +
+  annotate("text", x=2.25, y=tab[2,2]+2000, label= paste(round(pourcentage_ligne[2,2]), '%'))
+
+ggsave("Diagramme_barre_Sinistralité.png")
+```
+
+
+### 2)
+
+Mettre côte à côte l'histogramme et la boîte à moustache associés à la distribution du montant des sinistres (**claimcst0**) et en dessous l'histogramme et la boîte à moustache de la distribution des montants de sinitres non nuls. 
+```{r}
+library(gridExtra)
+histogram <- ggplot(data = dataCar) + geom_histogram(aes(claimcst0), breaks = seq(0, 40000, 100))
+boxplot <- ggplot(data = dataCar) + geom_boxplot(mapping = aes(y = claimcst0))
+histogram_1 <- ggplot(data = dataCar[dataCar$clm == 1, ]) + geom_histogram(aes(claimcst0), breaks = seq(0, 40000, 100))
+boxplot_1 <- ggplot(data = dataCar[dataCar$clm == 1, ]) + geom_boxplot(mapping = aes(y = claimcst0))
+grid.arrange(histogram, boxplot, histogram_1, boxplot_1, ncol = 2)
+```
+
+### 3)
+
+Tracer sur un même graphique la boîte à moustache des montants de sinistres non nuls pour chacune des modalités de la variable **gender**. Ajouter une ligne horizontale pour indiquer où se situe  la moyenne pour chacune des modalités sur la variable **gender**. Les lignes horizontales doivent être de couleur différente.  
+```{r}
+ggplot(data = dataCar[dataCar$clm == 1, ]) + geom_boxplot(mapping = aes(y = claimcst0, x = gender)) + geom_hline(yintercept = mean(dataCar$claimcst0[(dataCar$clm == 1)&(dataCar$gender == 'M')]), color = 'blue') + geom_hline(yintercept = mean(dataCar$claimcst0[(dataCar$clm == 1)&(dataCar$gender == 'F')]), color = 'red') +
+  annotate("text", x = 2.5, y = 4000 , label = 'M', color = 'blue') +
+  annotate("text", x = 2.5, y = 500, label = 'F', color = 'red')
+```
+
